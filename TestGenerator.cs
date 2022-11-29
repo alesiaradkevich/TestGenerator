@@ -67,7 +67,7 @@ namespace TestGeneratorLib
                 }
                 nsInfo.Add(new NsInfo(ns.Name.ToString(), innerNsClasses));
             }
-            return CodeGenerator.Generate();
+            return CodeGenerator.Generate(nsInfo, usings);
         }
 
         public List<MethodInfo> GetMethods(ClassDeclarationSyntax innerClass)
