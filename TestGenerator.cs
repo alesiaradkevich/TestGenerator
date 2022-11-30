@@ -28,14 +28,24 @@ namespace TestGeneratorLib
             MaxTasksToExecute = new ExecutionDataflowBlockOptions { MaxDegreeOfParallelism = maxTasksToExecute };
         }
 
-        public void Generate()
+        public Task Generate()
         {
             var loadFiles = new TransformBlock<string, ClassFileInfo>
                 (new Func<string, Task<ClassFileInfo>>(LoadContent), MaxFilesToLoad);
             var getTestClasses = new TransformBlock<ClassFileInfo, List<ClassFileInfo>>
                 (new Func<ClassFileInfo, Task<List<ClassFileInfo>>>(GenerateTests), MaxTasksToExecute);
             var writeResult = new ActionBlock<List<ClassFileInfo>>
-                (async input => { await FillTests(input); }, MaxFilesToWrite);
+                (async input => { await FillTests(input); }, MaxFilesToWrite); 
+            loadFiles.LinkTo(getTestClasses, new DataflowLinkOptions() { PropagateCompletion = true });
+            getTestClasses.LinkTo(writeResult, new DataflowLinkOptions() { PropagateCompletion = true });
+
+            foreach (var sourceFile in SourceFiles)
+            {
+                loadFiles.Post(sourceFile);
+            }
+            loadFiles.Complete();
+
+            return writeResult.Completion;
         }
 
         private async Task<ClassFileInfo> LoadContent(string sourceFile)
